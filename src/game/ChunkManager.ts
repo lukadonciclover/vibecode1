@@ -1,10 +1,10 @@
 import * as THREE from 'three'
+import { ALL_BLOCKS } from './types'
+import { BLOCKS, blockOccludes } from '../data/blocks'
 import { BlockManager } from './BlockManager'
 import {
-  BLOCK_INFO,
   BlockType,
   CHUNK_SIZE,
-  PLACEABLE_BLOCKS,
   WORLD_CHUNK_MAX,
   WORLD_CHUNK_MIN,
   WORLD_HEIGHT,
@@ -31,16 +31,20 @@ export class ChunkManager {
   readonly group = new THREE.Group()
   private readonly meshes = new Map<string, THREE.Mesh>()
   private readonly materials: THREE.MeshLambertMaterial[]
+  private readonly materialIndex = new Map<BlockType, number>()
 
   constructor(private readonly blocks: BlockManager) {
     this.group.name = 'Voxel chunks'
-    this.materials = PLACEABLE_BLOCKS.map((type) => new THREE.MeshLambertMaterial({
-      color: BLOCK_INFO[type].color,
+    this.materials = ALL_BLOCKS.map((type, index) => {
+      this.materialIndex.set(type, index)
+      return new THREE.MeshLambertMaterial({
+      color: BLOCKS[type].color,
       vertexColors: true,
-      transparent: type === BlockType.Leaves,
-      opacity: type === BlockType.Leaves ? 0.94 : 1,
-      alphaTest: type === BlockType.Leaves ? 0.05 : 0,
-    }))
+      transparent: type === BlockType.Leaves || type === BlockType.BerryBush,
+      opacity: type === BlockType.Leaves ? 0.94 : type === BlockType.BerryBush ? 0.88 : 1,
+      alphaTest: type === BlockType.Leaves || type === BlockType.BerryBush ? 0.05 : 0,
+    })
+    })
   }
 
   buildWorld() {
@@ -78,7 +82,7 @@ export class ChunkManager {
       existing.geometry.dispose()
     }
 
-    const buckets: GeometryBucket[] = PLACEABLE_BLOCKS.map(() => ({ positions: [], normals: [], colors: [] }))
+    const buckets: GeometryBucket[] = ALL_BLOCKS.map(() => ({ positions: [], normals: [], colors: [] }))
     const startX = chunkX * CHUNK_SIZE
     const startZ = chunkZ * CHUNK_SIZE
 
@@ -87,16 +91,20 @@ export class ChunkManager {
         for (let x = startX; x < startX + CHUNK_SIZE; x += 1) {
           const type = this.blocks.getBlock(x, y, z)
           if (type === BlockType.Air) continue
-          const bucket = buckets[type - 1]
+          const index = this.materialIndex.get(type)
+          if (index === undefined) continue
+          const bucket = buckets[index]
+          const skyShade = this.blocks.hasSkyAccess(x, y + 1, z) ? 1 : 0.52
 
           for (const face of FACES) {
             const [nx, ny, nz] = face.normal
-            if (this.blocks.getBlock(x + nx, y + ny, z + nz) !== BlockType.Air) continue
+            if (blockOccludes(this.blocks.getBlock(x + nx, y + ny, z + nz))) continue
             for (const index of TRIANGLE_ORDER) {
               const corner = face.corners[index]
               bucket.positions.push(x + corner[0], y + corner[1], z + corner[2])
               bucket.normals.push(nx, ny, nz)
-              bucket.colors.push(face.shade, face.shade, face.shade)
+              const shade = face.shade * skyShade
+              bucket.colors.push(shade, shade, shade)
             }
           }
         }
@@ -126,7 +134,7 @@ export class ChunkManager {
 
     const mesh = new THREE.Mesh(geometry, this.materials)
     mesh.name = `Chunk ${key}`
-    mesh.castShadow = false
+    mesh.castShadow = true
     mesh.receiveShadow = true
     this.meshes.set(key, mesh)
     this.group.add(mesh)

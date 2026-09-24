@@ -1,7 +1,7 @@
 import * as THREE from 'three'
+import { isSolidBlock } from '../data/blocks'
 import { BlockManager } from './BlockManager'
 import type { PlayerPosition } from './types'
-import { BlockType } from './types'
 
 const PLAYER_RADIUS = 0.3
 const PLAYER_HEIGHT = 1.78
@@ -19,15 +19,24 @@ export class PlayerController {
   private pitch = 0
   private grounded = false
   private paused = false
+  private fallStartY: number
+  private stepTimer = 0
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly canvas: HTMLCanvasElement,
     private readonly blocks: BlockManager,
     start: PlayerPosition,
+    private readonly events: {
+      onLand?: (fallDistance: number) => void
+      onVoid?: () => void
+      onJump?: () => void
+      onStep?: () => void
+    } = {},
   ) {
     this.position = new THREE.Vector3(start.x, start.y, start.z)
     this.camera.rotation.order = 'YXZ'
+    this.fallStartY = start.y
     this.syncCamera()
     window.addEventListener('keydown', this.onKeyDown)
     window.addEventListener('keyup', this.onKeyUp)
@@ -41,6 +50,7 @@ export class PlayerController {
     const strafe = (this.keys.has('KeyD') ? 1 : 0) - (this.keys.has('KeyA') ? 1 : 0)
     const length = Math.hypot(forward, strafe) || 1
     const speed = this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? SPRINT_SPEED : WALK_SPEED
+    const wasGrounded = this.grounded
 
     this.velocity.x = ((-Math.sin(this.yaw) * forward + Math.cos(this.yaw) * strafe) / length) * speed
     this.velocity.z = ((-Math.cos(this.yaw) * forward - Math.sin(this.yaw) * strafe) / length) * speed
@@ -51,10 +61,21 @@ export class PlayerController {
     this.grounded = false
     this.moveAxis('y', this.velocity.y * delta)
 
+    if (wasGrounded && !this.grounded) this.fallStartY = this.position.y
+    if (!wasGrounded && this.grounded) this.events.onLand?.(Math.max(0, this.fallStartY - this.position.y))
+
+    if (this.grounded && (forward !== 0 || strafe !== 0)) {
+      this.stepTimer += delta * (speed / WALK_SPEED)
+      if (this.stepTimer >= 0.42) {
+        this.stepTimer = 0
+        this.events.onStep?.()
+      }
+    } else {
+      this.stepTimer = 0
+    }
+
     if (this.position.y < -10) {
-      const spawn = this.blocks.findSpawn()
-      this.position.set(spawn.x, spawn.y, spawn.z)
-      this.velocity.set(0, 0, 0)
+      this.events.onVoid?.()
     }
     this.syncCamera()
   }
@@ -79,6 +100,13 @@ export class PlayerController {
     return { x: this.position.x, y: this.position.y, z: this.position.z }
   }
 
+  teleport(position: PlayerPosition) {
+    this.position.set(position.x, position.y, position.z)
+    this.velocity.set(0, 0, 0)
+    this.fallStartY = position.y
+    this.syncCamera()
+  }
+
   dispose() {
     window.removeEventListener('keydown', this.onKeyDown)
     window.removeEventListener('keyup', this.onKeyUp)
@@ -91,6 +119,8 @@ export class PlayerController {
     if (event.code === 'Space' && this.grounded) {
       this.velocity.y = JUMP_SPEED
       this.grounded = false
+      this.fallStartY = this.position.y
+      this.events.onJump?.()
     }
   }
 
@@ -133,7 +163,7 @@ export class PlayerController {
     for (let x = minX; x <= maxX; x += 1) {
       for (let y = minY; y <= maxY; y += 1) {
         for (let z = minZ; z <= maxZ; z += 1) {
-          if (this.blocks.getBlock(x, y, z) !== BlockType.Air) return true
+          if (isSolidBlock(this.blocks.getBlock(x, y, z))) return true
         }
       }
     }

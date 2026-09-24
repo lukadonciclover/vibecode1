@@ -1,4 +1,5 @@
 import { WorldGenerator } from './WorldGenerator'
+import { isSolidBlock } from '../data/blocks'
 import {
   BlockType,
   type BlockChanges,
@@ -52,7 +53,7 @@ export class BlockManager {
           if (Math.abs(x) !== radius && Math.abs(z) !== radius) continue
           for (let y = WORLD_HEIGHT - 3; y >= 1; y -= 1) {
             const ground = this.getBlock(x, y, z)
-            const clear = this.getBlock(x, y + 1, z) === BlockType.Air && this.getBlock(x, y + 2, z) === BlockType.Air
+            const clear = !isSolidBlock(this.getBlock(x, y + 1, z)) && !isSolidBlock(this.getBlock(x, y + 2, z))
             if ((ground === BlockType.Grass || ground === BlockType.Sand) && clear) {
               return { x: x + 0.5, y: y + 1.01, z: z + 0.5 }
             }
@@ -61,6 +62,20 @@ export class BlockManager {
       }
     }
     return { x: 0.5, y: WORLD_HEIGHT - 1, z: 0.5 }
+  }
+
+  findSurfaceY(x: number, z: number) {
+    for (let y = WORLD_HEIGHT - 2; y >= 0; y -= 1) {
+      if (isSolidBlock(this.getBlock(x, y, z)) && !isSolidBlock(this.getBlock(x, y + 1, z))) return y + 1
+    }
+    return 1
+  }
+
+  hasSkyAccess(x: number, y: number, z: number) {
+    for (let checkY = y; checkY < WORLD_HEIGHT; checkY += 1) {
+      if (isSolidBlock(this.getBlock(x, checkY, z))) return false
+    }
+    return true
   }
 
   private getChunk(chunkX: number, chunkZ: number) {

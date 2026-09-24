@@ -1,32 +1,35 @@
-import { BlockType, PLACEABLE_BLOCKS, type InventoryCounts, type PlaceableBlock } from './types'
+import { ITEM_IDS } from '../data/items'
+import type { InventoryCounts, ItemId } from './types'
 
-const STARTING_QUANTITY = 24
+const STARTING_ITEMS: Partial<Record<ItemId, number>> = {
+  grass: 24,
+  dirt: 24,
+  stone: 24,
+  sand: 24,
+  wood_log: 24,
+  leaves: 24,
+}
 
 export class InventorySystem {
   private readonly counts: InventoryCounts
 
-  constructor(initial?: InventoryCounts) {
-    this.counts = initial
-      ? { ...initial }
-      : PLACEABLE_BLOCKS.reduce((counts, type) => {
-          counts[type] = STARTING_QUANTITY
-          return counts
-        }, {} as InventoryCounts)
+  constructor(initial?: Partial<InventoryCounts>) {
+    this.counts = Object.fromEntries(ITEM_IDS.map((item) => [item, Math.max(0, Math.floor(initial?.[item] ?? STARTING_ITEMS[item] ?? 0))])) as InventoryCounts
   }
 
-  add(type: BlockType, quantity = 1) {
-    if (type === BlockType.Air) return
-    this.counts[type as PlaceableBlock] += quantity
+  add(item: ItemId, quantity = 1) {
+    if (quantity <= 0) return
+    this.counts[item] += Math.floor(quantity)
   }
 
-  remove(type: PlaceableBlock, quantity = 1) {
-    if (this.counts[type] < quantity) return false
-    this.counts[type] -= quantity
+  remove(item: ItemId, quantity = 1) {
+    if (quantity <= 0 || this.counts[item] < quantity) return false
+    this.counts[item] -= Math.floor(quantity)
     return true
   }
 
-  has(type: PlaceableBlock) {
-    return this.counts[type] > 0
+  has(item: ItemId, quantity = 1) {
+    return this.counts[item] >= quantity
   }
 
   snapshot(): InventoryCounts {

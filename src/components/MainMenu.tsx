@@ -45,10 +45,10 @@ export function MainMenu({ canContinue, onNewWorld, onContinue }: MainMenuProps)
           <span><kbd>WASD</kbd> Move</span>
           <span><kbd>Space</kbd> Jump</span>
           <span><kbd>E</kbd> Pack</span>
-          <span><kbd>Mouse</kbd> Shape</span>
+          <span><kbd>Mouse</kbd> Mine / fight</span>
         </div>
       </section>
-      <footer>Local save · Original generated terrain · v0.1</footer>
+      <footer>Local save · Survival sandbox · v0.2</footer>
     </main>
   )
 }

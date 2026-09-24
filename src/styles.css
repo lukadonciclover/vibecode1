@@ -307,6 +307,46 @@ kbd {
   backdrop-filter: blur(5px);
 }
 
+.survival-bars {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: min(390px, 42vw);
+  display: grid;
+  gap: 6px;
+  transform: translateX(-50%);
+}
+
+.status-meter {
+  display: grid;
+  grid-template-columns: 52px 1fr 28px;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 8px;
+  background: rgb(13 22 16 / 72%);
+  border: 1px solid rgb(255 255 255 / 16%);
+  font: 9px 'DM Mono', monospace;
+  text-transform: uppercase;
+  text-shadow: 0 1px 2px #000;
+  backdrop-filter: blur(5px);
+}
+
+.status-meter > div {
+  height: 8px;
+  overflow: hidden;
+  background: rgb(0 0 0 / 42%);
+}
+
+.status-meter i {
+  height: 100%;
+  display: block;
+  transition: width 180ms ease;
+}
+
+.status-meter b { text-align: right; }
+.health-meter i { background: #d95757; }
+.hunger-meter i { background: #d79b4d; }
+
 .seed-label {
   max-width: min(65vw, 340px);
   overflow: hidden;
@@ -363,6 +403,7 @@ kbd {
   box-shadow: 0 10px 35px rgb(0 0 0 / 30%);
   backdrop-filter: blur(8px);
   pointer-events: auto;
+  max-width: calc(100vw - 16px);
 }
 
 .hotbar-slot {
@@ -396,6 +437,32 @@ kbd {
   bottom: 2px;
   font: 500 11px 'DM Mono', monospace;
   text-shadow: 0 1px 2px #000;
+}
+
+.item-icon {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 27px;
+  height: 27px;
+  display: grid;
+  place-items: center;
+  transform: translate(-50%, -50%);
+  color: #172018;
+  background: var(--item-color);
+  border-top: 6px solid rgb(255 255 255 / 25%);
+  box-shadow: inset -5px 0 rgb(17 24 18 / 18%), 2px 3px 0 rgb(0 0 0 / 18%);
+  font: 800 8px 'DM Mono', monospace;
+}
+
+.item-icon.is-large {
+  position: relative;
+  top: auto;
+  left: auto;
+  width: 38px;
+  height: 38px;
+  transform: none;
+  font-size: 9px;
 }
 
 .block-swatch {
@@ -432,6 +499,24 @@ kbd {
 }
 
 .action-hint b { color: #eaf49d; }
+
+.mining-progress {
+  position: absolute;
+  top: calc(50% + 24px);
+  left: 50%;
+  width: 94px;
+  height: 6px;
+  overflow: hidden;
+  transform: translateX(-50%);
+  border: 1px solid rgb(255 255 255 / 55%);
+  background: rgb(0 0 0 / 52%);
+}
+
+.mining-progress i {
+  height: 100%;
+  display: block;
+  background: #eaf49d;
+}
 
 .focus-prompt {
   position: absolute;
@@ -474,12 +559,16 @@ kbd {
 }
 
 .inventory-panel {
-  width: min(92vw, 610px);
+  width: min(94vw, 920px);
+  max-height: min(90vh, 760px);
+  overflow: auto;
   padding: clamp(22px, 5vw, 42px);
   border: 1px solid #4c604f;
   background: #152019;
   box-shadow: 14px 14px 0 rgb(5 10 7 / 35%);
 }
+
+.inventory-panel.is-expanded { width: min(96vw, 1080px); }
 
 .inventory-panel header {
   display: flex;
@@ -509,6 +598,12 @@ kbd {
   gap: 8px;
 }
 
+.inventory-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(280px, 0.8fr);
+  gap: 24px;
+}
+
 .inventory-item {
   display: grid;
   grid-template-columns: 42px 1fr auto;
@@ -526,6 +621,69 @@ kbd {
   font: 500 13px 'DM Mono', monospace;
 }
 
+.crafting-panel {
+  position: relative;
+  min-width: 0;
+  padding-left: 22px;
+  border-left: 1px solid #344638;
+}
+
+.crafting-heading h3 {
+  margin: 0 0 14px;
+  font-size: 22px;
+}
+
+.recipe-list {
+  display: grid;
+  gap: 7px;
+}
+
+.recipe {
+  position: relative;
+  min-height: 58px;
+  display: grid;
+  grid-template-columns: 40px 1fr auto;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border: 1px solid #405445;
+  background: #1d2b21;
+  text-align: left;
+  cursor: pointer;
+}
+
+.recipe:hover:not(:disabled) { border-color: #a8cc62; }
+.recipe:disabled { opacity: 0.42; cursor: not-allowed; }
+.recipe .item-icon { position: relative; top: auto; left: auto; transform: none; }
+.recipe span { min-width: 0; }
+.recipe strong { display: block; font-size: 11px; }
+.recipe small { display: block; overflow: hidden; color: #849588; font: 9px 'DM Mono', monospace; text-overflow: ellipsis; white-space: nowrap; }
+.recipe b { color: #dce98c; font: 9px 'DM Mono', monospace; white-space: nowrap; }
+.table-note { margin: 15px 0 0; color: #849588; font-size: 10px; line-height: 1.5; }
+.inventory-total { display: block; margin-top: 12px; color: #617365; font: 9px 'DM Mono', monospace; }
+
+.death-screen {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  justify-items: center;
+  padding: 24px;
+  background: rgb(19 8 10 / 82%);
+  pointer-events: auto;
+  text-align: center;
+  backdrop-filter: grayscale(1) blur(5px);
+}
+
+.death-screen h2 {
+  margin: 0 0 8px;
+  font-size: clamp(48px, 10vw, 90px);
+  letter-spacing: -0.06em;
+}
+
+.death-screen p { color: #b8aaa6; }
+.death-screen .primary-button { min-width: 180px; }
+
 .inventory-panel > p {
   margin: 22px 0 0;
   color: #829286;
@@ -537,14 +695,18 @@ kbd {
   .menu-card { padding: 27px; box-shadow: 10px 10px 0 rgb(38 58 41 / 35%); }
   .control-hints { display: none; }
   .main-menu footer { display: none; }
+  .inventory-layout { grid-template-columns: 1fr; }
   .inventory-grid { grid-template-columns: repeat(2, 1fr); }
+  .crafting-panel { padding: 18px 0 0; border: 0; border-top: 1px solid #344638; }
   .inventory-item { grid-template-columns: 36px 1fr auto; padding: 9px; }
   .block-swatch.is-large { width: 32px; height: 32px; }
   .action-hint { display: none; }
   .hotbar { bottom: 12px; gap: 2px; padding: 4px; }
-  .hotbar-slot { width: min(14vw, 54px); height: min(14vw, 54px); }
+  .hotbar-slot { width: min(8.7vw, 48px); height: min(11vw, 50px); }
+  .hotbar-slot .item-icon { width: 22px; height: 22px; border-top-width: 4px; font-size: 7px; }
   .hud-readout { top: 10px; left: 10px; }
   .menu-button { top: 10px; right: 10px; }
+  .survival-bars { top: auto; bottom: 80px; width: min(90vw, 360px); }
 }
 
 @media (max-height: 650px) {

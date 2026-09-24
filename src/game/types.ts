@@ -6,7 +6,26 @@ export enum BlockType {
   Sand = 4,
   Wood = 5,
   Leaves = 6,
+  CraftingTable = 7,
+  BerryBush = 8,
+  CopperOre = 9,
+  Silverstone = 10,
+  CrystalOre = 11,
 }
+
+export const ALL_BLOCKS = [
+  BlockType.Grass,
+  BlockType.Dirt,
+  BlockType.Stone,
+  BlockType.Sand,
+  BlockType.Wood,
+  BlockType.Leaves,
+  BlockType.CraftingTable,
+  BlockType.BerryBush,
+  BlockType.CopperOre,
+  BlockType.Silverstone,
+  BlockType.CrystalOre,
+] as const
 
 export const PLACEABLE_BLOCKS = [
   BlockType.Grass,
@@ -15,10 +34,29 @@ export const PLACEABLE_BLOCKS = [
   BlockType.Sand,
   BlockType.Wood,
   BlockType.Leaves,
+  BlockType.CraftingTable,
 ] as const
 
 export type PlaceableBlock = (typeof PLACEABLE_BLOCKS)[number]
-export type InventoryCounts = Record<PlaceableBlock, number>
+export type ItemId =
+  | 'grass'
+  | 'dirt'
+  | 'stone'
+  | 'sand'
+  | 'wood_log'
+  | 'leaves'
+  | 'crafting_table'
+  | 'copper_ore'
+  | 'silverstone'
+  | 'crystal_ore'
+  | 'berry'
+  | 'wood_planks'
+  | 'stick'
+  | 'wooden_pickaxe'
+  | 'wooden_axe'
+  | 'wooden_shovel'
+
+export type InventoryCounts = Record<ItemId, number>
 export type BlockChanges = Record<string, BlockType>
 
 export interface PlayerPosition {
@@ -28,21 +66,16 @@ export interface PlayerPosition {
 }
 
 export interface SaveData {
-  version: 1
+  version: 2
   seed: string
   position: PlayerPosition
   inventory: InventoryCounts
   changes: BlockChanges
+  health: number
+  hunger: number
+  worldTime: number
+  selectedItem: ItemId
   updatedAt: number
-}
-
-export const BLOCK_INFO: Record<PlaceableBlock, { label: string; color: string; side: string }> = {
-  [BlockType.Grass]: { label: 'Grass', color: '#78a94c', side: '#657f3d' },
-  [BlockType.Dirt]: { label: 'Dirt', color: '#9a6844', side: '#7e5134' },
-  [BlockType.Stone]: { label: 'Stone', color: '#8c9695', side: '#6e7879' },
-  [BlockType.Sand]: { label: 'Sand', color: '#d7c27a', side: '#bca464' },
-  [BlockType.Wood]: { label: 'Wood', color: '#a97943', side: '#74502d' },
-  [BlockType.Leaves]: { label: 'Leaves', color: '#497d45', side: '#335f38' },
 }
 
 export const CHUNK_SIZE = 16

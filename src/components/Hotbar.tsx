@@ -1,28 +1,26 @@
-import { BLOCK_INFO, PLACEABLE_BLOCKS, type InventoryCounts, type PlaceableBlock } from '../game/types'
+import { HOTBAR_ITEMS, ITEMS } from '../data/items'
+import type { InventoryCounts, ItemId } from '../game/types'
 
 interface HotbarProps {
-  selected: PlaceableBlock
+  selected: ItemId
   inventory: InventoryCounts
-  onSelect: (type: PlaceableBlock) => void
+  onSelect: (item: ItemId) => void
 }
 
 export function Hotbar({ selected, inventory, onSelect }: HotbarProps) {
   return (
-    <div className="hotbar" aria-label="Block hotbar">
-      {PLACEABLE_BLOCKS.map((type, index) => (
+    <div className="hotbar" aria-label="Item hotbar">
+      {HOTBAR_ITEMS.map((item, index) => (
         <button
-          className={`hotbar-slot ${selected === type ? 'is-selected' : ''}`}
-          key={type}
-          onClick={() => onSelect(type)}
-          title={`${index + 1}: ${BLOCK_INFO[type].label}`}
+          className={`hotbar-slot ${selected === item ? 'is-selected' : ''}`}
+          key={item}
+          onClick={() => onSelect(item)}
+          title={`${index === 9 ? 0 : index + 1}: ${ITEMS[item].name}`}
           type="button"
         >
-          <span className="slot-key">{index + 1}</span>
-          <span
-            className="block-swatch"
-            style={{ '--block-top': BLOCK_INFO[type].color, '--block-side': BLOCK_INFO[type].side } as React.CSSProperties}
-          />
-          <strong>{inventory[type]}</strong>
+          <span className="slot-key">{index === 9 ? 0 : index + 1}</span>
+          <span className="item-icon" style={{ '--item-color': ITEMS[item].color } as React.CSSProperties}>{ITEMS[item].icon}</span>
+          <strong>{inventory[item] || ''}</strong>
         </button>
       ))}
     </div>
