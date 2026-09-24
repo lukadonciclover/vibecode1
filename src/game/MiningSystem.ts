@@ -12,20 +12,20 @@ export class MiningSystem {
   private duration = 0
   private selectedItem: ItemId | null = null
 
-  begin(target: MiningTarget, selectedItem: ItemId) {
+  begin(target: MiningTarget, selectedItem: ItemId, creative = false) {
     if (this.target?.key === target.key && this.selectedItem === selectedItem) return
     this.target = target
     this.selectedItem = selectedItem
     this.elapsed = 0
-    this.duration = ToolSystem.miningDuration(target.type, selectedItem)
+    this.duration = ToolSystem.miningDuration(target.type, selectedItem, creative)
   }
 
-  update(delta: number, target: MiningTarget | null, selectedItem: ItemId) {
+  update(delta: number, target: MiningTarget | null, selectedItem: ItemId, creative = false) {
     if (!target) {
       this.cancel()
       return false
     }
-    if (this.target?.key !== target.key || this.selectedItem !== selectedItem) this.begin(target, selectedItem)
+    if (this.target?.key !== target.key || this.selectedItem !== selectedItem) this.begin(target, selectedItem, creative)
     this.elapsed += delta
     return this.elapsed >= this.duration
   }

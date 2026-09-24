@@ -1,6 +1,6 @@
 import { ITEM_IDS, ITEMS } from '../data/items'
 import type { CraftingStation, Recipe } from '../data/recipes'
-import type { InventoryCounts } from '../game/types'
+import type { InventoryCounts, ItemId } from '../game/types'
 import { CraftingPanel } from './CraftingPanel'
 
 interface InventoryProps {
@@ -9,10 +9,11 @@ interface InventoryProps {
   recipes: Recipe[]
   canCraft: (recipe: Recipe) => boolean
   onCraft: (recipe: Recipe) => void
+  onSelectItem?: (item: ItemId) => void
   onClose: () => void
 }
 
-export function Inventory({ inventory, station, recipes, canCraft, onCraft, onClose }: InventoryProps) {
+export function Inventory({ inventory, station, recipes, canCraft, onCraft, onSelectItem, onClose }: InventoryProps) {
   return (
     <div className="inventory-backdrop" role="dialog" aria-modal="true" aria-label="Inventory and crafting">
       <section className={`inventory-panel ${station === 'table' ? 'is-expanded' : ''}`}>
@@ -26,11 +27,11 @@ export function Inventory({ inventory, station, recipes, canCraft, onCraft, onCl
         <div className="inventory-layout">
           <div className="inventory-grid">
             {ITEM_IDS.filter((item) => inventory[item] > 0).map((item) => (
-              <div className="inventory-item" key={item}>
+              <button type="button" className="inventory-item" onClick={() => onSelectItem?.(item)} key={item}>
                 <span className="item-icon is-large" style={{ '--item-color': ITEMS[item].color } as React.CSSProperties}>{ITEMS[item].icon}</span>
                 <span>{ITEMS[item].name}</span>
                 <strong>{inventory[item]}</strong>
-              </div>
+              </button>
             ))}
           </div>
           <CraftingPanel station={station} recipes={recipes} inventory={inventory} canCraft={canCraft} onCraft={onCraft} />

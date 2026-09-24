@@ -1,5 +1,6 @@
+import { useState } from 'react'
 import { ITEMS } from '../data/items'
-import type { CraftingStation, Recipe } from '../data/recipes'
+import type { CraftingStation, Recipe, RecipeCategory } from '../data/recipes'
 import type { InventoryCounts } from '../game/types'
 
 interface CraftingPanelProps {
@@ -11,14 +12,32 @@ interface CraftingPanelProps {
 }
 
 export function CraftingPanel({ station, recipes, inventory, canCraft, onCraft }: CraftingPanelProps) {
+  const categories = [...new Set(recipes.map((recipe) => recipe.category))]
+  const [category, setCategory] = useState<RecipeCategory | 'all'>('all')
+  const visibleRecipes = category === 'all' ? recipes : recipes.filter((recipe) => recipe.category === category)
+
   return (
     <section className="crafting-panel">
       <div className="crafting-heading">
         <span className="eyebrow">{station === 'table' ? 'Crafting table' : 'Field crafting'}</span>
         <h3>Recipes</h3>
       </div>
+      <div className="crafting-categories" role="tablist" aria-label="Recipe category">
+        {(['all', ...categories] as const).map((candidate) => (
+          <button
+            className={category === candidate ? 'is-active' : undefined}
+            type="button"
+            role="tab"
+            aria-selected={category === candidate}
+            onClick={() => setCategory(candidate)}
+            key={candidate}
+          >
+            {candidate}
+          </button>
+        ))}
+      </div>
       <div className="recipe-list">
-        {recipes.map((recipe) => {
+        {visibleRecipes.map((recipe) => {
           const available = canCraft(recipe)
           const ingredients = Object.entries(recipe.ingredients)
             .map(([item, quantity]) => `${quantity} ${ITEMS[item as keyof typeof ITEMS].name}`)

@@ -1,24 +1,27 @@
-import { BlockType, type ItemId } from '../game/types'
+import { ITEMS, type ToolType } from './items'
+import type { ItemId } from '../game/types'
 
 export interface ToolDefinition {
   name: string
   icon: string
+  toolType: ToolType
+  tier: number
   miningSpeedMultiplier: number
-  effectiveBlockTypes: readonly BlockType[]
   attackDamage: number
+  maxDurability: number
 }
 
-export const TOOLS: Partial<Record<ItemId, ToolDefinition>> = {
-  wooden_pickaxe: {
-    name: 'Wooden Pickaxe', icon: 'PI', miningSpeedMultiplier: 2.5,
-    effectiveBlockTypes: [BlockType.Stone, BlockType.CopperOre, BlockType.Silverstone, BlockType.CrystalOre], attackDamage: 8,
-  },
-  wooden_axe: {
-    name: 'Wooden Axe', icon: 'AX', miningSpeedMultiplier: 2.5,
-    effectiveBlockTypes: [BlockType.Wood, BlockType.CraftingTable], attackDamage: 12,
-  },
-  wooden_shovel: {
-    name: 'Wooden Shovel', icon: 'SH', miningSpeedMultiplier: 2.5,
-    effectiveBlockTypes: [BlockType.Dirt, BlockType.Grass, BlockType.Sand], attackDamage: 7,
-  },
-}
+const speeds = [1, 2.5, 3.5, 4.5, 6]
+export const TOOLS: Partial<Record<ItemId, ToolDefinition>> = Object.fromEntries(
+  Object.values(ITEMS)
+    .filter((entry) => entry.toolType)
+    .map((entry) => [entry.id, {
+      name: entry.name,
+      icon: entry.icon,
+      toolType: entry.toolType!,
+      tier: entry.toolTier ?? 0,
+      miningSpeedMultiplier: speeds[entry.toolTier ?? 0],
+      attackDamage: entry.attackDamage ?? 5,
+      maxDurability: entry.durability ?? 1,
+    }]),
+) as Partial<Record<ItemId, ToolDefinition>>

@@ -1,4 +1,4 @@
-export type SoundEffect = 'walk' | 'jump' | 'break' | 'place' | 'damage' | 'attack' | 'craft' | 'eat'
+export type SoundEffect = 'walk' | 'jump' | 'break' | 'place' | 'damage' | 'attack' | 'craft' | 'eat' | 'tool_break' | 'hit' | 'rain' | 'thunder'
 
 const SOUND: Record<SoundEffect, [number, number, OscillatorType]> = {
   walk: [110, 0.035, 'sine'],
@@ -9,10 +9,17 @@ const SOUND: Record<SoundEffect, [number, number, OscillatorType]> = {
   attack: [175, 0.06, 'square'],
   craft: [430, 0.11, 'triangle'],
   eat: [260, 0.08, 'sine'],
+  tool_break: [95, 0.2, 'sawtooth'],
+  hit: [125, 0.07, 'square'],
+  rain: [180, 0.12, 'sine'],
+  thunder: [42, 0.7, 'sawtooth'],
 }
 
 export class AudioManager {
   private context: AudioContext | null = null
+  private volume = 0.8
+
+  setVolume(volume: number) { this.volume = Math.max(0, Math.min(1, volume)) }
 
   play(effect: SoundEffect) {
     try {
@@ -23,7 +30,7 @@ export class AudioManager {
       oscillator.type = type
       oscillator.frequency.setValueAtTime(frequency, this.context.currentTime)
       oscillator.frequency.exponentialRampToValueAtTime(Math.max(40, frequency * 0.72), this.context.currentTime + duration)
-      gain.gain.setValueAtTime(0.035, this.context.currentTime)
+      gain.gain.setValueAtTime(0.035 * this.volume, this.context.currentTime)
       gain.gain.exponentialRampToValueAtTime(0.0001, this.context.currentTime + duration)
       oscillator.connect(gain).connect(this.context.destination)
       oscillator.start()

@@ -1,7 +1,7 @@
 import * as THREE from 'three'
 import { isSolidBlock } from '../data/blocks'
 import { BlockManager } from './BlockManager'
-import type { PlayerPosition } from './types'
+import type { GameMode, PlayerPosition } from './types'
 
 const PLAYER_RADIUS = 0.3
 const PLAYER_HEIGHT = 1.78
@@ -21,17 +21,22 @@ export class PlayerController {
   private paused = false
   private fallStartY: number
   private stepTimer = 0
+  private flying = false
+  private lastSpaceAt = 0
 
   constructor(
     private readonly camera: THREE.PerspectiveCamera,
     private readonly canvas: HTMLCanvasElement,
     private readonly blocks: BlockManager,
     start: PlayerPosition,
-    private readonly events: {
+    private readonly options: {
       onLand?: (fallDistance: number) => void
       onVoid?: () => void
       onJump?: () => void
       onStep?: () => void
+      onFlightChange?: (flying: boolean) => void
+      gameMode?: GameMode
+      mouseSensitivity?: number
     } = {},
   ) {
     this.position = new THREE.Vector3(start.x, start.y, start.z)
@@ -54,28 +59,32 @@ export class PlayerController {
 
     this.velocity.x = ((-Math.sin(this.yaw) * forward + Math.cos(this.yaw) * strafe) / length) * speed
     this.velocity.z = ((-Math.cos(this.yaw) * forward - Math.sin(this.yaw) * strafe) / length) * speed
-    this.velocity.y -= GRAVITY * delta
+    if (this.flying) {
+      this.velocity.y = ((this.keys.has('Space') ? 1 : 0) - (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight') ? 1 : 0)) * SPRINT_SPEED
+    } else {
+      this.velocity.y -= GRAVITY * delta
+    }
 
     this.moveAxis('x', this.velocity.x * delta)
     this.moveAxis('z', this.velocity.z * delta)
-    this.grounded = false
+    this.grounded = this.flying
     this.moveAxis('y', this.velocity.y * delta)
 
-    if (wasGrounded && !this.grounded) this.fallStartY = this.position.y
-    if (!wasGrounded && this.grounded) this.events.onLand?.(Math.max(0, this.fallStartY - this.position.y))
+    if (!this.flying && wasGrounded && !this.grounded) this.fallStartY = this.position.y
+    if (!this.flying && !wasGrounded && this.grounded) this.options.onLand?.(Math.max(0, this.fallStartY - this.position.y))
 
     if (this.grounded && (forward !== 0 || strafe !== 0)) {
       this.stepTimer += delta * (speed / WALK_SPEED)
       if (this.stepTimer >= 0.42) {
         this.stepTimer = 0
-        this.events.onStep?.()
+        this.options.onStep?.()
       }
     } else {
       this.stepTimer = 0
     }
 
     if (this.position.y < -10) {
-      this.events.onVoid?.()
+      this.options.onVoid?.()
     }
     this.syncCamera()
   }
@@ -83,6 +92,10 @@ export class PlayerController {
   setPaused(paused: boolean) {
     this.paused = paused
     this.keys.clear()
+  }
+
+  setMouseSensitivity(sensitivity: number) {
+    this.options.mouseSensitivity = Math.max(0.2, Math.min(3, sensitivity))
   }
 
   intersectsBlock(x: number, y: number, z: number) {
@@ -98,6 +111,14 @@ export class PlayerController {
 
   getSerializablePosition(): PlayerPosition {
     return { x: this.position.x, y: this.position.y, z: this.position.z }
+  }
+
+  get isFlying() {
+    return this.flying
+  }
+
+  get isFalling() {
+    return !this.flying && !this.grounded && this.velocity.y < -1
   }
 
   teleport(position: PlayerPosition) {
@@ -116,11 +137,21 @@ export class PlayerController {
   private readonly onKeyDown = (event: KeyboardEvent) => {
     if (this.paused || document.pointerLockElement !== this.canvas) return
     this.keys.add(event.code)
+    if (event.code === 'Space' && this.options.gameMode === 'creative' && !event.repeat) {
+      const now = performance.now()
+      if (now - this.lastSpaceAt < 320) {
+        this.flying = !this.flying
+        this.velocity.y = 0
+        this.options.onFlightChange?.(this.flying)
+      }
+      this.lastSpaceAt = now
+      if (this.flying) return
+    }
     if (event.code === 'Space' && this.grounded) {
       this.velocity.y = JUMP_SPEED
       this.grounded = false
       this.fallStartY = this.position.y
-      this.events.onJump?.()
+      this.options.onJump?.()
     }
   }
 
@@ -130,8 +161,9 @@ export class PlayerController {
 
   private readonly onMouseMove = (event: MouseEvent) => {
     if (this.paused || document.pointerLockElement !== this.canvas) return
-    this.yaw -= event.movementX * 0.0022
-    this.pitch -= event.movementY * 0.0022
+    const sensitivity = this.options.mouseSensitivity ?? 1
+    this.yaw -= event.movementX * 0.0022 * sensitivity
+    this.pitch -= event.movementY * 0.0022 * sensitivity
     this.pitch = Math.max(-Math.PI / 2 + 0.02, Math.min(Math.PI / 2 - 0.02, this.pitch))
     this.camera.rotation.set(this.pitch, this.yaw, 0)
   }

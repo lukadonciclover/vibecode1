@@ -12,8 +12,8 @@ export class HungerSystem {
     return this.current
   }
 
-  update(delta: number, onStarve: () => void, onRegenerate: () => void) {
-    this.current = Math.max(0, this.current - delta / 60)
+  update(delta: number, onStarve: () => void, onRegenerate: () => void, depletionMultiplier = 1) {
+    this.current = Math.max(0, this.current - (delta / 60) * Math.max(0, depletionMultiplier))
     if (this.current === 0) {
       this.starvationTimer += delta
       if (this.starvationTimer >= 3) {

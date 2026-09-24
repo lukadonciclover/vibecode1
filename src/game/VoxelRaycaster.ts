@@ -6,6 +6,7 @@ export interface VoxelHit {
   block: THREE.Vector3
   normal: THREE.Vector3
   type: BlockType
+  distance: number
 }
 
 export class VoxelRaycaster {
@@ -31,7 +32,7 @@ export class VoxelRaycaster {
 
     while (distance <= maxDistance) {
       const type = this.blocks.getBlock(cell.x, cell.y, cell.z)
-      if (type !== BlockType.Air) return { block: cell.clone(), normal: normal.clone(), type }
+      if (type !== BlockType.Air) return { block: cell.clone(), normal: normal.clone(), type, distance }
 
       if (side.x <= side.y && side.x <= side.z) {
         distance = side.x

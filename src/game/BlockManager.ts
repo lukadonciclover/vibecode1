@@ -1,67 +1,103 @@
-import { WorldGenerator } from './WorldGenerator'
 import { isSolidBlock } from '../data/blocks'
-import {
-  BlockType,
-  type BlockChanges,
-  CHUNK_SIZE,
-  WORLD_CHUNK_MAX,
-  WORLD_CHUNK_MIN,
-  WORLD_HEIGHT,
-} from './types'
+import { WorldGenerator } from './WorldGenerator'
+import { BlockType, CHUNK_SIZE, type ModifiedChunks, WORLD_HEIGHT } from './types'
+import { blockChunk, chunkKey, localBlockKey, localCoordinate } from './world/chunkCoordinates'
 
 export class BlockManager {
-  private readonly chunks = new Map<string, Uint8Array>()
-  private readonly changes: BlockChanges
+  private readonly residentChunks = new Map<string, Uint8Array>()
+  private readonly modifiedChunks: ModifiedChunks
+  private readonly dirtyChunks = new Set<string>()
 
   constructor(
     private readonly generator: WorldGenerator,
-    initialChanges: BlockChanges = {},
+    initialChanges: ModifiedChunks = {},
   ) {
-    this.changes = { ...initialChanges }
+    this.modifiedChunks = Object.fromEntries(Object.entries(initialChanges).map(([key, changes]) => [key, { ...changes }]))
   }
 
   getBlock(x: number, y: number, z: number): BlockType {
-    if (!this.isInsideWorld(x, y, z)) return BlockType.Air
-    const change = this.changes[this.blockKey(x, y, z)]
+    if (!this.validCoordinate(x, y, z)) return BlockType.Air
+    const chunkX = blockChunk(x)
+    const chunkZ = blockChunk(z)
+    const localX = localCoordinate(x, chunkX)
+    const localZ = localCoordinate(z, chunkZ)
+    const key = chunkKey(chunkX, chunkZ)
+    const change = this.modifiedChunks[key]?.[localBlockKey(localX, y, localZ)]
     if (change !== undefined) return change
-
-    const chunkX = Math.floor(x / CHUNK_SIZE)
-    const chunkZ = Math.floor(z / CHUNK_SIZE)
-    const chunk = this.getChunk(chunkX, chunkZ)
-    const localX = x - chunkX * CHUNK_SIZE
-    const localZ = z - chunkZ * CHUNK_SIZE
-    return chunk[localX + CHUNK_SIZE * (localZ + CHUNK_SIZE * y)] as BlockType
+    const chunk = this.residentChunks.get(key)
+    if (chunk) return chunk[localX + CHUNK_SIZE * (localZ + CHUNK_SIZE * y)] as BlockType
+    return this.generator.getBlock(x, y, z)
   }
 
   setBlock(x: number, y: number, z: number, type: BlockType) {
-    if (!this.isInsideWorld(x, y, z)) return false
-    const key = this.blockKey(x, y, z)
+    if (!this.validCoordinate(x, y, z)) return false
+    const chunkX = blockChunk(x)
+    const chunkZ = blockChunk(z)
+    const key = chunkKey(chunkX, chunkZ)
+    const localKey = localBlockKey(localCoordinate(x, chunkX), y, localCoordinate(z, chunkZ))
     const generated = this.generator.getBlock(x, y, z)
-    if (type === generated) delete this.changes[key]
-    else this.changes[key] = type
+    const changes = this.modifiedChunks[key] ??= {}
+    if (type === generated) delete changes[localKey]
+    else changes[localKey] = type
+    if (Object.keys(changes).length === 0) delete this.modifiedChunks[key]
+    this.dirtyChunks.add(key)
     return true
   }
 
-  getChanges(): BlockChanges {
-    return { ...this.changes }
+  loadChunk(chunkX: number, chunkZ: number) {
+    const key = chunkKey(chunkX, chunkZ)
+    let chunk = this.residentChunks.get(key)
+    if (!chunk) {
+      chunk = this.generator.generateChunk(chunkX, chunkZ)
+      this.residentChunks.set(key, chunk)
+    }
+    return chunk
   }
 
-  findSpawn() {
-    for (let radius = 0; radius < 14; radius += 1) {
-      for (let x = -radius; x <= radius; x += 1) {
-        for (let z = -radius; z <= radius; z += 1) {
-          if (Math.abs(x) !== radius && Math.abs(z) !== radius) continue
+  unloadChunk(chunkX: number, chunkZ: number) {
+    this.residentChunks.delete(chunkKey(chunkX, chunkZ))
+  }
+
+  hasChunk(chunkX: number, chunkZ: number) {
+    return this.residentChunks.has(chunkKey(chunkX, chunkZ))
+  }
+
+  get loadedChunkCount() {
+    return this.residentChunks.size
+  }
+
+  get residentChunkKeys() {
+    return [...this.residentChunks.keys()]
+  }
+
+  getModifiedChunks(): ModifiedChunks {
+    return Object.fromEntries(Object.entries(this.modifiedChunks).map(([key, changes]) => [key, { ...changes }]))
+  }
+
+  takeDirtyChunks() {
+    const dirty = [...this.dirtyChunks]
+    this.dirtyChunks.clear()
+    return dirty
+  }
+
+  findSpawn(centerX = 0, centerZ = 0) {
+    for (let radius = 0; radius < 20; radius += 1) {
+      for (let offsetX = -radius; offsetX <= radius; offsetX += 1) {
+        for (let offsetZ = -radius; offsetZ <= radius; offsetZ += 1) {
+          if (Math.abs(offsetX) !== radius && Math.abs(offsetZ) !== radius) continue
+          const x = centerX + offsetX
+          const z = centerZ + offsetZ
           for (let y = WORLD_HEIGHT - 3; y >= 1; y -= 1) {
             const ground = this.getBlock(x, y, z)
             const clear = !isSolidBlock(this.getBlock(x, y + 1, z)) && !isSolidBlock(this.getBlock(x, y + 2, z))
-            if ((ground === BlockType.Grass || ground === BlockType.Sand) && clear) {
+            if ((ground === BlockType.Grass || ground === BlockType.Sand || ground === BlockType.Path) && clear) {
               return { x: x + 0.5, y: y + 1.01, z: z + 0.5 }
             }
           }
         }
       }
     }
-    return { x: 0.5, y: WORLD_HEIGHT - 1, z: 0.5 }
+    return { x: centerX + 0.5, y: WORLD_HEIGHT - 1, z: centerZ + 0.5 }
   }
 
   findSurfaceY(x: number, z: number) {
@@ -78,23 +114,7 @@ export class BlockManager {
     return true
   }
 
-  private getChunk(chunkX: number, chunkZ: number) {
-    const key = `${chunkX},${chunkZ}`
-    let chunk = this.chunks.get(key)
-    if (!chunk) {
-      chunk = this.generator.generateChunk(chunkX, chunkZ)
-      this.chunks.set(key, chunk)
-    }
-    return chunk
-  }
-
-  private isInsideWorld(x: number, y: number, z: number) {
-    const min = WORLD_CHUNK_MIN * CHUNK_SIZE
-    const max = (WORLD_CHUNK_MAX + 1) * CHUNK_SIZE
-    return x >= min && x < max && z >= min && z < max && y >= 0 && y < WORLD_HEIGHT
-  }
-
-  private blockKey(x: number, y: number, z: number) {
-    return `${x},${y},${z}`
+  private validCoordinate(x: number, y: number, z: number) {
+    return Number.isInteger(x) && Number.isInteger(y) && Number.isInteger(z) && y >= 0 && y < WORLD_HEIGHT
   }
 }

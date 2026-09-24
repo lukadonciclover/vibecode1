@@ -1,7 +1,6 @@
 import * as THREE from 'three'
 import { NIGHT_CRAWLER } from '../data/enemies'
 import { BlockManager } from './BlockManager'
-import { WORLD_CHUNK_MAX, WORLD_CHUNK_MIN, CHUNK_SIZE } from './types'
 
 interface Enemy {
   id: number
@@ -110,10 +109,8 @@ export class EnemyManager {
   private spawnNear(player: THREE.Vector3) {
     const angle = Math.random() * Math.PI * 2
     const distance = 11 + Math.random() * 10
-    const min = WORLD_CHUNK_MIN * CHUNK_SIZE + 2
-    const max = (WORLD_CHUNK_MAX + 1) * CHUNK_SIZE - 3
-    const x = Math.max(min, Math.min(max, Math.floor(player.x + Math.cos(angle) * distance)))
-    const z = Math.max(min, Math.min(max, Math.floor(player.z + Math.sin(angle) * distance)))
+    const x = Math.floor(player.x + Math.cos(angle) * distance)
+    const z = Math.floor(player.z + Math.sin(angle) * distance)
     const y = this.blocks.findSurfaceY(x, z)
     if (!this.blocks.hasSkyAccess(x, y, z) || Math.hypot(x - player.x, z - player.z) < 8) return
 
